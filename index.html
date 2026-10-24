@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#120c19" />
+    <meta name="description" content="Live multi-judge scoring and scoreboard for The Voice 4.0." />
+    <title>The Voice 4.0 — Live Scoring</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="manifest" href="manifest.webmanifest" />
+  </head>
+  <body>
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+
+    <header class="site-header">
+      <a class="brand" href="#" aria-label="The Voice 4.0 home">
+        <span class="brand-mark">V</span>
+        <span>
+          <strong>The Voice <em>4.0</em></strong>
+          <small>Live scoring room</small>
+        </span>
+      </a>
+      <div class="header-actions">
+        <span class="sync-pill" id="syncStatus"><span></span> Connecting</span>
+        <button class="icon-button" id="settingsButton" type="button" aria-label="Open event setup" title="Event setup">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.12 2.12-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.55V20.3h-3v-.09a1.7 1.7 0 0 0-1.03-1.55A1.7 1.7 0 0 0 8.8 19l-.06.06-2.12-2.12.06-.06A1.7 1.7 0 0 0 7.02 15a1.7 1.7 0 0 0-1.55-1.03H5.4v-3h.07A1.7 1.7 0 0 0 7.02 9.94a1.7 1.7 0 0 0-.34-1.88L6.62 8l2.12-2.12.06.06a1.7 1.7 0 0 0 1.88.34 1.7 1.7 0 0 0 1.03-1.55V4.7h3v.03a1.7 1.7 0 0 0 1.03 1.55 1.7 1.7 0 0 0 1.88-.34l.06-.06L19.8 8l-.06.06a1.7 1.7 0 0 0-.34 1.88 1.7 1.7 0 0 0 1.55 1.03h.05v3h-.05A1.7 1.7 0 0 0 19.4 15Z"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div>
+          <p class="eyebrow">ROUND 2 · LIVE</p>
+          <h1>Every voice.<br /><span>One score.</span></h1>
+          <p class="hero-copy">Three judges. Four criteria. One live scoreboard that stays in sync on every device.</p>
+        </div>
+        <div class="hero-stat" aria-label="Scoring summary">
+          <div><span>14</span><small>Artists</small></div>
+          <div><span>3</span><small>Judges</small></div>
+          <div><span>4</span><small>Criteria</small></div>
+        </div>
+      </section>
+
+      <nav class="view-tabs" aria-label="App views">
+        <button class="tab active" data-view="scoreboard" type="button">Scoreboard</button>
+        <button class="tab" data-view="judge" type="button">Judge scoring</button>
+      </nav>
+
+      <section class="view active" id="scoreboardView">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">LIVE RANKING</p>
+            <h2>Scoreboard</h2>
+          </div>
+          <div class="toolbar">
+            <button class="secondary-button" id="exportButton" type="button">Export CSV</button>
+            <button class="primary-button compact" id="manualButton" type="button">Edit previous scores</button>
+          </div>
+        </div>
+
+        <div class="leader-podium" id="leaderPodium" aria-live="polite"></div>
+
+        <div class="scoreboard-card">
+          <div class="score-table-head">
+            <span>Rank</span><span>Artist</span><span>Judges</span><span>Previous</span><span>Round 2</span><span>Total</span>
+          </div>
+          <div id="scoreboardRows" class="score-table-body"></div>
+        </div>
+        <p class="score-note">Round 2 = all three judge totals ÷ 3. Overall total = previous-round score + Round 2.</p>
+      </section>
+
+      <section class="view" id="judgeView">
+        <div class="judge-toolbar">
+          <div>
+            <p class="eyebrow">JUDGE PANEL</p>
+            <h2>Enter scores</h2>
+          </div>
+          <label class="judge-select">
+            <span>You are scoring as</span>
+            <select id="judgeSelect">
+              <option value="">Choose a judge…</option>
+              <option value="judge1">Judge 1</option>
+              <option value="judge2">Judge 2</option>
+              <option value="judge3">Judge 3</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="judge-lock" id="judgeLock">
+          <div class="lock-orb">01</div>
+          <h3>Select your judge number</h3>
+          <p>Choose Judge 1, 2 or 3 above. Your selection stays on this device.</p>
+        </div>
+
+        <div class="scoring-layout hidden" id="scoringLayout">
+          <aside class="artist-list-panel">
+            <div class="artist-list-title">
+              <span>Artists</span><strong id="progressText">0 / 14 scored</strong>
+            </div>
+            <div class="progress-track"><span id="progressBar"></span></div>
+            <div class="artist-list" id="artistList"></div>
+          </aside>
+
+          <section class="score-entry-card">
+            <div class="entry-topline">
+              <span class="artist-number" id="artistNumber">01</span>
+              <span class="draft-status" id="draftStatus">Not scored</span>
+            </div>
+            <p class="legal-name" id="legalName">Yuricko</p>
+            <h3 id="stageName">Yuri J</h3>
+            <div class="criteria-grid" id="criteriaGrid"></div>
+            <div class="total-strip">
+              <span>Your total</span>
+              <strong><span id="judgeTotal">0</span><small id="judgeMax"> / 40</small></strong>
+            </div>
+            <div class="entry-actions">
+              <button class="secondary-button" id="previousArtist" type="button">Previous</button>
+              <button class="primary-button" id="saveScore" type="button">Save & next artist</button>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <dialog id="manualDialog" class="app-dialog">
+      <form method="dialog">
+        <div class="dialog-heading">
+          <div><p class="eyebrow">MANUAL ENTRY</p><h2>Previous-round scores</h2></div>
+          <button class="close-button" value="cancel" aria-label="Close">×</button>
+        </div>
+        <p class="dialog-copy">Enter each artist’s cumulative score from rounds completed before this app was introduced.</p>
+        <div class="manual-list" id="manualList"></div>
+        <div class="dialog-actions">
+          <button class="secondary-button" value="cancel">Cancel</button>
+          <button class="primary-button" id="saveManual" value="default">Save previous scores</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="settingsDialog" class="app-dialog">
+      <form method="dialog">
+        <div class="dialog-heading">
+          <div><p class="eyebrow">EVENT SETUP</p><h2>Scoring criteria</h2></div>
+          <button class="close-button" value="cancel" aria-label="Close">×</button>
+        </div>
+        <p class="dialog-copy">These labels and the maximum score update for all judges.</p>
+        <div class="settings-fields" id="settingsFields"></div>
+        <label class="field-row"><span>Maximum per criterion</span><input id="maxScoreInput" type="number" min="1" max="100" step="1" /></label>
+        <div class="dialog-actions">
+          <button class="secondary-button" value="cancel">Cancel</button>
+          <button class="primary-button" id="saveSettings" value="default">Save setup</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "name": "The Voice 4.0 Scoreboard",
+  "short_name": "Voice 4.0",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0d0912",
+  "theme_color": "#0d0912",
+  "description": "Live three-judge scoring for The Voice 4.0"
+}
