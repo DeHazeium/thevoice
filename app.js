@@ -61,48 +61,49 @@ class FirebaseAdapter {
   async start(onChange) {
     const appSdk = await import("https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js");
     const authSdk = await import("https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js");
-    const dbSdk = await import("https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js");
+    const dbSdk = await import("https://www.gstatic.com/firebasejs/11.0.2/firebase-database.js");
     const app = appSdk.initializeApp(firebaseConfig);
-    this.db = dbSdk.getFirestore(app);
-    this.fs = dbSdk;
-    await authSdk.signInAnonymously(authSdk.getAuth(app));
-    this.base = dbSdk.collection(this.db, "events", eventId, "contestants");
-    this.scores = dbSdk.collection(this.db, "events", eventId, "scores");
-    this.settings = dbSdk.doc(this.db, "events", eventId, "config", "main");
+    this.db = dbSdk.getDatabase(app);
+    this.rtdb = dbSdk;
+    try {
+      await authSdk.signInAnonymously(authSdk.getAuth(app));
+    } catch (error) {
+      console.warn("Anonymous Firebase Authentication is not enabled; trying the database's current public rules.", error);
+    }
+    this.basePath = `events/${eventId}`;
+    this.base = dbSdk.ref(this.db, this.basePath);
     await this.seed();
-    dbSdk.onSnapshot(this.base, (snapshot) => {
-      if (!snapshot.empty) state.contestants = snapshot.docs.map((item) => item.data()).sort((a,b) => a.order - b.order);
+    dbSdk.onValue(dbSdk.ref(this.db, `${this.basePath}/contestants`), (snapshot) => {
+      if (snapshot.exists()) state.contestants = Object.values(snapshot.val()).sort((a,b) => a.order - b.order);
       onChange(); setSync("Live sync", "online");
     }, () => setSync("Sync error", "offline"));
-    dbSdk.onSnapshot(this.scores, (snapshot) => {
-      state.scores = Object.fromEntries(snapshot.docs.map((item) => [item.id, item.data()]));
+    dbSdk.onValue(dbSdk.ref(this.db, `${this.basePath}/scores`), (snapshot) => {
+      state.scores = snapshot.val() || {};
       onChange();
     });
-    dbSdk.onSnapshot(this.settings, (snapshot) => {
-      if (snapshot.exists()) state.settings = { ...DEFAULT_SETTINGS, ...snapshot.data() };
+    dbSdk.onValue(dbSdk.ref(this.db, `${this.basePath}/config`), (snapshot) => {
+      if (snapshot.exists()) state.settings = { ...DEFAULT_SETTINGS, ...snapshot.val() };
       onChange();
     });
   }
   async seed() {
-    const { getDocs, getDoc, writeBatch, doc, setDoc } = this.fs;
-    const [contestantsSnapshot, settingsSnapshot] = await Promise.all([getDocs(this.base), getDoc(this.settings)]);
-    if (contestantsSnapshot.empty) {
-      const batch = writeBatch(this.db);
-      CONTESTANTS.forEach((artist) => batch.set(doc(this.base, artist.id), artist));
-      await batch.commit();
-    }
-    if (!settingsSnapshot.exists()) await setDoc(this.settings, DEFAULT_SETTINGS);
+    const snapshot = await this.rtdb.get(this.base);
+    const existing = snapshot.val() || {};
+    const updates = {};
+    if (!existing.contestants) CONTESTANTS.forEach((artist) => { updates[`contestants/${artist.id}`] = artist; });
+    if (!existing.config) updates.config = DEFAULT_SETTINGS;
+    if (Object.keys(updates).length) await this.rtdb.update(this.base, updates);
   }
   async saveScore(score) {
-    const ref = this.fs.doc(this.scores, scoreKey(score.artistId, score.judgeId));
-    await this.fs.setDoc(ref, { ...score, updatedAt: this.fs.serverTimestamp() }, { merge: true });
+    const target = this.rtdb.ref(this.db, `${this.basePath}/scores/${scoreKey(score.artistId, score.judgeId)}`);
+    await this.rtdb.set(target, { ...score, updatedAt: this.rtdb.serverTimestamp() });
   }
   async savePrevious(updates) {
-    const batch = this.fs.writeBatch(this.db);
-    for (const [id, previousScore] of Object.entries(updates)) batch.update(this.fs.doc(this.base, id), { previousScore });
-    await batch.commit();
+    const values = {};
+    for (const [id, previousScore] of Object.entries(updates)) values[`${this.basePath}/contestants/${id}/previousScore`] = previousScore;
+    await this.rtdb.update(this.rtdb.ref(this.db), values);
   }
-  async saveSettings(settings) { await this.fs.setDoc(this.settings, settings, { merge: true }); }
+  async saveSettings(settings) { await this.rtdb.update(this.rtdb.ref(this.db, `${this.basePath}/config`), settings); }
 }
 
 function isFirebaseConfigured() {

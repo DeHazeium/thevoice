@@ -1,0 +1,10 @@
+{
+  "rules": {
+    "events": {
+      "$eventId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    }
+  }
+}

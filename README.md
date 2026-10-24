@@ -8,20 +8,18 @@ A responsive, real-time scoring app for 14 contestants, three judges and four co
 - Four criterion scores are totaled for each judge.
 - Round 2 is calculated as `(Judge 1 + Judge 2 + Judge 3) ÷ 3`.
 - Previous-round scores can be entered manually and are added to Round 2 for the overall ranking.
-- Firebase Firestore keeps every device in sync in real time.
+- Firebase Realtime Database keeps every device in sync in real time.
 - The scoreboard can be exported as CSV.
 
 ## Firebase setup
 
-1. Create a Firebase project at <https://console.firebase.google.com/>.
-2. Add a Web app in **Project settings → Your apps**.
-3. Copy the web configuration into `firebase-config.js`.
-4. In **Build → Authentication → Sign-in method**, enable **Anonymous** sign-in.
-5. In **Build → Firestore Database**, create a database.
-6. Open **Firestore Database → Rules**, paste the contents of `firestore.rules`, and publish the rules.
-7. In **Authentication → Settings → Authorized domains**, add your GitHub Pages hostname, such as `yourname.github.io`.
+This project is already connected to the `thevoice-cbc19` Firebase project.
 
-Until Firebase is configured, the app automatically runs in demo mode using this browser's local storage.
+1. In **Build → Authentication → Sign-in method**, enable **Anonymous** sign-in.
+2. Open **Realtime Database → Rules**, paste the contents of `database.rules.json`, and publish the rules.
+3. In **Authentication → Settings → Authorized domains**, add your GitHub Pages hostname, such as `yourname.github.io`.
+
+If Firebase is unavailable, the app automatically runs in demo mode using this browser's local storage.
 
 ## GitHub Pages deployment
 
