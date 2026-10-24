@@ -37,26 +37,6 @@ const round = (value) => Math.round((Number(value) || 0) * 100) / 100;
 const formatScore = (value) => round(value).toLocaleString(undefined, { maximumFractionDigits: 2 });
 const scoreKey = (artistId, judgeId) => `${artistId}_${judgeId}`;
 
-class LocalAdapter {
-  constructor() { this.key = `voice40-demo-v1-${eventId}`; }
-  async start(onChange) {
-    const saved = JSON.parse(localStorage.getItem(this.key) || "null");
-    if (saved) Object.assign(state, saved);
-    this.onChange = onChange;
-    setSync("Demo mode", "offline");
-  }
-  persist() {
-    localStorage.setItem(this.key, JSON.stringify({ contestants: state.contestants, scores: state.scores, settings: state.settings }));
-    this.onChange?.();
-  }
-  async saveScore(score) { state.scores[scoreKey(score.artistId, score.judgeId)] = score; this.persist(); }
-  async savePrevious(updates) {
-    state.contestants = state.contestants.map((artist) => ({ ...artist, previousScore: updates[artist.id] ?? artist.previousScore }));
-    this.persist();
-  }
-  async saveSettings(settings) { state.settings = settings; this.persist(); }
-}
-
 class FirebaseAdapter {
   async start(onChange) {
     const appSdk = await import("https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js");
@@ -237,7 +217,7 @@ async function saveCurrentScore() {
     showToast(`${artist.stageName} score saved`);
     if (state.selectedArtist < state.contestants.length - 1) state.selectedArtist += 1;
     renderAll();
-    if (state.adapter instanceof LocalAdapter) setSync("Demo mode", "offline"); else setSync("Live sync", "online");
+    setSync("Live sync", "online");
   } catch (error) { console.error(error); setSync("Save failed", "offline"); showToast("Could not save — check Firebase setup"); }
 }
 
@@ -298,13 +278,20 @@ async function init() {
   bindEvents(); renderAll();
   $("#judgeLock").classList.toggle("hidden", Boolean(state.judgeId));
   $("#scoringLayout").classList.toggle("hidden", !state.judgeId);
-  state.adapter = isFirebaseConfigured() ? new FirebaseAdapter() : new LocalAdapter();
+  if (!isFirebaseConfigured()) {
+    setSync("Firebase not configured", "offline");
+    showToast("Firebase configuration is required");
+    return;
+  }
+  state.adapter = new FirebaseAdapter();
   try { await state.adapter.start(renderAll); renderAll(); }
   catch (error) {
-    console.error(error); state.adapter = new LocalAdapter(); await state.adapter.start(renderAll);
-    showToast("Firebase unavailable — running in demo mode"); renderAll();
+    console.error(error);
+    setSync("Firebase connection failed", "offline");
+    showToast("Live sync unavailable — check Firebase access");
+    renderAll();
   }
-  if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("./service-worker.js").catch(() => {});
+  if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("./service-worker.js?v=7").catch(() => {});
 }
 
 init();

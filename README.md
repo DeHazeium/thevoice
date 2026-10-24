@@ -19,7 +19,7 @@ This project is already connected to the `thevoice-cbc19` Firebase project.
 2. Open **Realtime Database → Rules**, paste the contents of `database.rules.json`, and publish the rules.
 3. In **Authentication → Settings → Authorized domains**, add your GitHub Pages hostname, such as `yourname.github.io`.
 
-If Firebase is unavailable, the app automatically runs in demo mode using this browser's local storage.
+The app is live-sync-only. If Firebase is unavailable or access is denied, it displays a connection error and does not save scores locally.
 
 ## GitHub Pages deployment
 
