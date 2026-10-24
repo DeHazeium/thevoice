@@ -25,13 +25,9 @@ button { cursor: pointer; }
 .ambient-one { background: var(--purple); top: -220px; right: -80px; }
 .ambient-two { background: var(--coral); left: -260px; top: 56%; }
 
-.site-header { height: 82px; max-width: 1240px; margin: 0 auto; padding: 0 32px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
-.brand { color: inherit; text-decoration: none; display: flex; gap: 12px; align-items: center; }
-.brand-mark { width: 42px; height: 42px; display: grid; place-items: center; color: var(--bg); background: var(--lime); border-radius: 12px 12px 12px 3px; font: 800 23px/1 "Space Grotesk"; transform: rotate(-4deg); }
-.brand strong, .brand small { display: block; }
-.brand strong { font: 700 16px/1.1 "Space Grotesk"; letter-spacing: -.02em; }
-.brand em { color: var(--lime); font-style: normal; }
-.brand small { color: var(--muted); margin-top: 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .14em; }
+.site-header { min-height: 106px; max-width: 1240px; margin: 0 auto; padding: 12px 32px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
+.brand { color: inherit; text-decoration: none; display: flex; align-items: center; }
+.brand-logo { display: block; width: clamp(205px, 25vw, 292px); height: auto; padding: 4px 6px; border: 1px solid rgba(255,255,255,.075); border-radius: 12px; background: #000; }
 .header-actions { display: flex; gap: 12px; align-items: center; }
 .sync-pill { display: inline-flex; align-items: center; gap: 8px; padding: 9px 13px; border: 1px solid var(--line); border-radius: 99px; color: var(--muted); font-size: 12px; background: rgba(255,255,255,.025); }
 .sync-pill span { width: 7px; height: 7px; border-radius: 50%; background: #ffb13f; box-shadow: 0 0 12px currentColor; }
@@ -177,6 +173,8 @@ select:focus, input:focus { border-color: var(--lime); box-shadow: 0 0 0 3px rgb
 
 @media (max-width: 520px) {
   .sync-pill { display: none; }
+  .site-header { min-height: 88px; padding-top: 10px; padding-bottom: 10px; }
+  .brand-logo { width: 205px; }
   .hero { min-height: 370px; }
   .hero h1 { font-size: 50px; }
   .hero-stat div { padding: 20px 8px; }
