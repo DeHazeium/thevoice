@@ -43,8 +43,8 @@ main { max-width: 1180px; margin: 0 auto; padding: 0 32px 72px; }
 .hero h1 { margin: 0; font: 700 clamp(48px, 7vw, 84px)/.92 "Space Grotesk"; letter-spacing: -.065em; }
 .hero h1 span { color: transparent; -webkit-text-stroke: 1px rgba(255,255,255,.52); }
 .sr-only { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0,0,0,0) !important; white-space: nowrap !important; border: 0 !important; }
-.voice-logo-shell { width: min(560px, 50vw); height: 270px; margin: -28px 0 -8px; overflow: hidden; }
-.voice-logo { width: 100%; height: 100%; object-fit: cover; object-position: center 54%; mix-blend-mode: screen; }
+.voice-logo-shell { position: relative; width: min(560px, 50vw); height: 270px; margin: -28px 0 -8px; overflow: hidden; }
+.voice-logo { position: absolute; left: 50%; top: 52%; width: 130%; height: auto; max-width: none; transform: translate(-50%, -50%); mix-blend-mode: screen; }
 .hero-copy { max-width: 530px; margin: 24px 0 0; color: var(--muted); font-size: 16px; line-height: 1.65; }
 .hero-stat { display: grid; grid-template-columns: repeat(3,1fr); gap: 1px; min-width: 410px; background: var(--line); border: 1px solid var(--line); border-radius: 20px; overflow: hidden; box-shadow: var(--shadow); }
 .hero-stat div { padding: 28px 22px; text-align: center; background: var(--surface); }
