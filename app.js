@@ -1,4 +1,5 @@
 import { firebaseConfig, eventId } from "./firebase-config.js";
+import { round, sumScores, averageScores, formatScore } from "./score-math.js";
 
 const CONTESTANTS = [
   { id: "yuri-j", name: "Yuricko", stageName: "Yuri J" },
@@ -36,8 +37,6 @@ const state = {
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
-const round = (value) => Math.round((Number(value) || 0) * 100) / 100;
-const formatScore = (value) => round(value).toLocaleString(undefined, { maximumFractionDigits: 2 });
 const scoreKey = (artistId, judgeId) => `${artistId}_${judgeId}`;
 
 class FirebaseAdapter {
@@ -48,11 +47,7 @@ class FirebaseAdapter {
     const app = appSdk.initializeApp(firebaseConfig);
     this.db = dbSdk.getDatabase(app);
     this.rtdb = dbSdk;
-    try {
-      await authSdk.signInAnonymously(authSdk.getAuth(app));
-    } catch (error) {
-      console.warn("Anonymous Firebase Authentication is not enabled; trying the database's current public rules.", error);
-    }
+    await authSdk.signInAnonymously(authSdk.getAuth(app));
     this.basePath = `events/${eventId}`;
     this.base = dbSdk.ref(this.db, this.basePath);
     await this.seed();
@@ -72,7 +67,7 @@ class FirebaseAdapter {
     }, (error) => {
       console.error(error);
       state.loaded = false;
-      setSync('Connection unavailable', 'offline');
+      setSync('Connection unavailable', 'offline', connectionErrorMessage(error));
       renderScoreboard();
     });
   }
@@ -105,7 +100,15 @@ function isFirebaseConfigured() {
   return firebaseConfig.apiKey && !firebaseConfig.apiKey.includes("PASTE_") && firebaseConfig.projectId && !firebaseConfig.projectId.includes("PASTE_");
 }
 
-function setSync(label, mode) {
+function connectionErrorMessage(error) {
+  const code = String(error.code || error.message || '').toLowerCase();
+  if (/configuration-not-found|operation-not-allowed|admin-restricted-operation/.test(code)) return 'Firebase Anonymous sign-in is not enabled. Enable it in Firebase Authentication → Sign-in method, then reload this page.';
+  if (/permission.denied/.test(code)) return 'Firebase database access was denied. The Realtime Database rules must allow this signed-in app to access events/the-voice-4. Reload after the rules are updated.';
+  if (/unauthorized-domain/.test(code)) return 'Firebase has not authorized this website domain. Add dehazeium.github.io in Authentication settings, then reload.';
+  return 'The shared scoreboard could not connect. Check your internet connection and Firebase configuration, then reload. Scores have not been saved.';
+}
+
+function setSync(label, mode, detail) {
   const target = $("#syncStatus");
   target.lastChild.textContent = ` ${label}`;
   target.className = `sync-pill ${mode || ""}`;
@@ -114,9 +117,9 @@ function setSync(label, mode) {
   const notice = $('#connectionNotice');
   notice.classList.toggle('hidden', state.ready);
   notice.classList.toggle('failed', mode === 'offline');
-  notice.textContent = mode === 'offline'
+  notice.textContent = detail || (mode === 'offline'
     ? 'The shared scoreboard is unavailable. Scores cannot be loaded or saved. Check the connection and Firebase access, then reload this page.'
-    : 'Connecting to the shared scoreboard…';
+    : 'Connecting to the shared scoreboard…');
 }
 
 function scoreFor(artistId, judgeId) {
@@ -126,9 +129,9 @@ function scoreFor(artistId, judgeId) {
 function calculate(artist) {
   const judgeScores = ["judge1", "judge2", "judge3"].map((judge) => scoreFor(artist.id, judge));
   const complete = judgeScores.filter((score) => score.submitted).length;
-  const roundScore = round(judgeScores.reduce((sum, score) => sum + (Number(score.total) || 0), 0) / 3);
+  const roundScore = averageScores(judgeScores.map((score) => score.total));
   const previous = Number(artist.previousScore) || 0;
-  return { judgeScores, complete, roundScore, overall: round(previous + roundScore) };
+  return { judgeScores, complete, roundScore, overall: sumScores([previous, roundScore]) };
 }
 
 function rankedContestants() {
@@ -196,7 +199,7 @@ function renderJudgePanel() {
   $("#criteriaGrid").innerHTML = state.settings.criteria.map((criterion, index) => `
     <div class="criterion">
       <label for="criterion${index}"><span>${escapeHtml(criterion)}</span><small>max ${state.settings.maxScore}</small></label>
-      <input id="criterion${index}" data-score-input="${index}" type="number" min="0" max="${state.settings.maxScore}" step="0.1" inputmode="decimal" value="${score.values?.[index] ?? ""}" placeholder="0" />
+      <input id="criterion${index}" data-score-input="${index}" type="number" min="0" max="${state.settings.maxScore}" step="0.01" inputmode="decimal" value="${score.values?.[index] ?? ""}" placeholder="0.00" />
     </div>`).join("");
   $("#judgeMax").textContent = ` / ${state.settings.maxScore * 4}`;
   updateJudgeTotal();
@@ -205,13 +208,11 @@ function renderJudgePanel() {
 
 function updateJudgeTotal() {
   const max = Number(state.settings.maxScore);
-  let total = 0;
   $$('[data-score-input]').forEach((input) => {
     if (Number(input.value) > max) input.value = max;
     if (Number(input.value) < 0) input.value = 0;
-    total += Number(input.value) || 0;
   });
-  $("#judgeTotal").textContent = formatScore(total);
+  $("#judgeTotal").textContent = formatScore(sumScores($$('[data-score-input]').map((input) => input.value)));
 }
 
 function renderManualList() {
@@ -238,9 +239,10 @@ function renderAll() {
 async function saveCurrentScore() {
   if (!state.ready) return showToast('Connect to the shared scoreboard before saving');
   const artist = state.contestants[state.selectedArtist];
+  if ($$('[data-score-input]').some((input) => !input.reportValidity())) return showToast('Use scores with up to two decimal places');
   const values = $$('[data-score-input]').map((input) => input.value === "" ? "" : round(input.value));
   if (values.some((value) => value === "")) return showToast("Please score all four criteria");
-  const score = { artistId: artist.id, judgeId: state.judgeId, values, total: round(values.reduce((sum, value) => sum + Number(value), 0)), submitted: true };
+  const score = { artistId: artist.id, judgeId: state.judgeId, values, total: sumScores(values), submitted: true };
   setSync("Saving…", "");
   try {
     await state.adapter.saveScore(score);
@@ -253,7 +255,7 @@ async function saveCurrentScore() {
 
 function exportCsv() {
   const header = ["Rank","Stage name","Name","Judge 1","Judge 2","Judge 3","Previous score","Round 2 average","Overall total"];
-  const rows = rankedContestants().map((artist, index) => [index + 1, artist.stageName, artist.name, ...artist.result.judgeScores.map((score) => score.total || 0), artist.previousScore || 0, artist.result.roundScore, artist.result.overall]);
+  const rows = rankedContestants().map((artist, index) => [index + 1, artist.stageName, artist.name, ...[...artist.result.judgeScores.map((score) => score.total || 0), artist.previousScore || 0, artist.result.roundScore, artist.result.overall].map((value) => round(value).toFixed(2))]);
   const csv = [header, ...rows].map((row) => row.map((cell) => `"${String(cell).replaceAll('"','""')}"`).join(",")).join("\n");
   const link = document.createElement("a");
   link.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
@@ -290,6 +292,7 @@ function bindEvents() {
   $("#saveManual").addEventListener("click", async (event) => {
     event.preventDefault();
     if (!state.ready) return showToast('Connect to the shared scoreboard before saving');
+    if ($$('[data-manual-id]').some((input) => !input.reportValidity())) return showToast('Use scores with up to two decimal places');
     const updates = Object.fromEntries($$("[data-manual-id]").map((input) => [input.dataset.manualId, Math.max(0, round(input.value))]));
     try { await state.adapter.savePrevious(updates); $("#manualDialog").close(); showToast("Previous scores updated"); renderAll(); }
     catch (error) { console.error(error); showToast("Could not save previous scores"); }
@@ -319,11 +322,11 @@ async function init() {
   try { await state.adapter.start(renderAll); renderAll(); }
   catch (error) {
     console.error(error);
-    setSync("Firebase connection failed", "offline");
+    setSync("Firebase connection failed", "offline", connectionErrorMessage(error));
     showToast("Live sync unavailable — check Firebase access");
     renderAll();
   }
-  if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("./service-worker.js?v=8").catch(() => {});
+  if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("./service-worker.js?v=9").catch(() => {});
 }
 
 init();

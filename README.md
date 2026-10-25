@@ -6,6 +6,7 @@ A responsive, real-time scoring app for 14 contestants, three judges and four co
 
 - Each device selects Judge 1, 2 or 3 and scores every contestant.
 - Four criterion scores are totaled for each judge.
+- Criterion and previous-round scores accept up to two decimal places. Totals, averages and CSV exports display two decimal places; sums use whole hundredths to avoid floating-point drift.
 - Round 2 is calculated as `(Judge 1 + Judge 2 + Judge 3) ÷ 3`.
 - Previous-round scores can be entered manually and are added to Round 2 for the overall ranking.
 - Firebase Realtime Database keeps every device in sync in real time.
@@ -28,4 +29,4 @@ The app is live-sync-only. If Firebase is unavailable or access is denied, it di
 3. Under **Build and deployment**, choose **GitHub Actions** as the source.
 4. Push to `main`. The included workflow publishes the site automatically.
 
-The Firebase web config is a public client configuration, not a server secret. Access is protected by Firebase Authentication and Firestore rules.
+The Firebase web config is a public client configuration, not a server secret. Access is controlled by Firebase Authentication and Realtime Database rules. The provided rules permit any authenticated user (including anonymous users) to edit event data; judge selection is not a security boundary.
