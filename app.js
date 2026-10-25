@@ -1,5 +1,6 @@
 import { firebaseConfig, eventId } from "./firebase-config.js";
-import { round, sumScores, averageScores, formatScore } from "./score-math.js";
+import { round, sumScores, formatScore } from "./score-math.js";
+import { rankContestants } from "./standings.js";
 
 const CONTESTANTS = [
   { id: "yuri-j", name: "Yuricko", stageName: "Yuri J" },
@@ -126,17 +127,8 @@ function scoreFor(artistId, judgeId) {
   return state.scores[scoreKey(artistId, judgeId)] || { values: ["", "", "", ""], total: 0, submitted: false };
 }
 
-function calculate(artist) {
-  const judgeScores = ["judge1", "judge2", "judge3"].map((judge) => scoreFor(artist.id, judge));
-  const complete = judgeScores.filter((score) => score.submitted).length;
-  const roundScore = averageScores(judgeScores.map((score) => score.total));
-  const previous = Number(artist.previousScore) || 0;
-  return { judgeScores, complete, roundScore, overall: sumScores([previous, roundScore]) };
-}
-
 function rankedContestants() {
-  return state.contestants.map((artist) => ({ ...artist, result: calculate(artist) }))
-    .sort((a,b) => b.result.overall - a.result.overall || b.result.roundScore - a.result.roundScore || a.order - b.order);
+  return rankContestants(state.contestants, state.scores);
 }
 
 function renderScoreboard() {
@@ -278,6 +270,18 @@ function escapeHtml(value) {
 }
 
 function bindEvents() {
+  $('#obsButton').addEventListener('click', () => {
+    $('#obsLinks').innerHTML = [1, 2, 3].map((rank) => {
+      const url = new URL(`overlay.html?rank=${rank}`, location.href).href;
+      return `<div class="obs-link-row"><strong>Top ${rank}</strong><input readonly aria-label="Top ${rank} OBS URL" value="${escapeHtml(url)}" /><div><button type="button" class="secondary-button" data-copy-rank="${rank}">Copy URL</button><a class="primary-button compact" href="${escapeHtml(url)}" target="_blank" rel="noopener">Open Top ${rank} ↗</a></div></div>`;
+    }).join('');
+    $$('[data-copy-rank]').forEach((button) => button.addEventListener('click', async () => {
+      const input = button.closest('.obs-link-row').querySelector('input');
+      try { await navigator.clipboard.writeText(input.value); showToast(`Top ${button.dataset.copyRank} URL copied`); }
+      catch { input.focus(); input.select(); showToast('Select and copy this overlay URL'); }
+    }));
+    $('#obsDialog').showModal();
+  });
   $$(".tab").forEach((tab) => tab.addEventListener("click", () => switchView(tab.dataset.view)));
   $("#judgeSelect").value = state.judgeId;
   $("#judgeSelect").addEventListener("change", (event) => {
@@ -326,7 +330,7 @@ async function init() {
     showToast("Live sync unavailable — check Firebase access");
     renderAll();
   }
-  if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("./service-worker.js?v=9").catch(() => {});
+  if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("./service-worker.js?v=10").catch(() => {});
 }
 
 init();

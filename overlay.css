@@ -1,0 +1,18 @@
+* { box-sizing:border-box; }
+html,body { margin:0; width:100%; height:100%; overflow:hidden; background:#00ff00!important; }
+body { font-family:Arial,Helvetica,sans-serif; }
+.overlay-stage { width:100%; height:100%; display:flex; align-items:center; justify-content:center; padding:4vw; }
+.rank-card { width:100%; max-width:1600px; display:grid; grid-template-columns:18% minmax(0,1fr) 24%; min-height:210px; color:#f6f8fa; background:#090c10; border:2px solid #a8d8ff; }
+.rank-card[hidden] { display:none; }
+.rank-block { display:flex; flex-direction:column; align-items:center; justify-content:center; background:#a8d8ff; color:#102335; padding:18px 10px; }
+.rank-block span { font-size:clamp(15px,2.3vw,34px); letter-spacing:.2em; font-weight:700; }
+.rank-block strong { font-size:clamp(70px,10vw,150px); line-height:1; }
+.artist-block { min-width:0; padding:28px 32px; align-self:center; }
+.artist-block p { font-size:clamp(10px,1.2vw,18px); color:#a8d8ff; letter-spacing:.12em; margin:0 0 18px; }
+.artist-block p span { color:#d4dce5; }
+h1 { margin:0 0 10px; font-size:clamp(25px,4.8vw,72px); line-height:1.05; overflow-wrap:anywhere; }
+#overlayLegalName { font-size:clamp(13px,1.6vw,24px); color:#d4dce5; overflow-wrap:anywhere; }
+.points-block { display:flex; flex-direction:column; align-items:center; justify-content:center; border-left:1px solid #40566a; margin:24px 0; padding:10px; }
+.points-block strong { font-size:clamp(25px,4.2vw,68px); color:#a8d8ff; font-variant-numeric:tabular-nums; }
+.points-block span { font-size:clamp(9px,1vw,15px); margin-top:10px; letter-spacing:.08em; text-align:center; }
+@media(max-width:600px) { .rank-card { min-height:160px; } .artist-block { padding:16px; } .artist-block p span { display:none; } .artist-block p { letter-spacing:0; } .rank-block strong { font-size:56px; } }

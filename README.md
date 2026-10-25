@@ -12,6 +12,12 @@ A responsive, real-time scoring app for 14 contestants, three judges and four co
 - Firebase Realtime Database keeps every device in sync in real time.
 - The scoreboard can be exported as CSV.
 
+## OBS overlays
+
+Click **OBS overlays** on the scoreboard to copy or open separate Top 1, Top 2 and Top 3 green-screen URLs. Add each as an OBS Browser Source with a 1600 × 400 viewport and a Green Chroma Key filter. Toggle each source independently for your broadcast.
+
+The overlays subscribe to real Firebase standings and display the same overall ranking and two-decimal score as the scoreboard. They never write scores. A disconnected or unscored position is hidden, leaving only the green background. Rankings are live, not a final-results lock; ties retain the scoreboard's Round 2 and contestant-order tie-breaks.
+
 ## Firebase setup
 
 This project is already connected to the `thevoice-cbc19` Firebase project.

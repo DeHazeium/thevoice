@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Voice 4.0 — OBS overlay</title>
+  <link rel="stylesheet" href="overlay.css?v=1" />
+</head>
+<body>
+  <main class="overlay-stage">
+    <article id="rankCard" class="rank-card" hidden aria-label="Live ranked contestant">
+      <div class="rank-block"><span>TOP</span><strong id="rankNumber"></strong></div>
+      <div class="artist-block"><p>THE VOICE 4.0 <span> / LIVE STANDINGS</span></p><h1 id="overlayName"></h1><div id="overlayLegalName"></div></div>
+      <div class="points-block"><strong id="overlayScore"></strong><span>OVERALL POINTS</span></div>
+    </article>
+  </main>
+  <script type="module" src="overlay.js?v=1"></script>
+</body>
+</html>

@@ -80,6 +80,11 @@ select,input { background:#f8f8f3; color:#162e40; border-color:#b8c4ca; border-r
 .manual-list,.manual-row { border-color:#c1cdd4; }
 .manual-row small { color:#587080; }
 .toast { background:#183b54; color:#fff; max-width:calc(100vw - 24px); }
+.toolbar { flex-wrap:wrap; }
+.obs-link-row { display:grid; gap:10px; padding:18px 0; border-bottom:1px solid #bdc9d1; }
+.obs-link-row input { width:100%; font-size:12px; }
+.obs-link-row > div { display:flex; gap:10px; flex-wrap:wrap; }
+.obs-link-row a { text-decoration:none; display:inline-flex; align-items:center; }
 .empty-state { padding:36px 24px; color:#506574; line-height:1.6; }
 .empty-state strong { display:block; font-size:20px; font-weight:500; color:#1c3547; }
 .leader-podium:empty { display:none; }
