@@ -10,6 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css?v=6" />
+    <link rel="stylesheet" href="editorial.css?v=8" />
     <link rel="manifest" href="manifest.webmanifest" />
   </head>
   <body>
@@ -30,21 +31,28 @@
 
     <main>
       <section class="hero">
-        <div>
-          <p class="eyebrow">ROUND 2 · LIVE</p>
-          <h1 class="sr-only">The Voice 4.0 — Step up, own the mic</h1>
+        <div class="hero-art">
+          <div class="hero-caption"><span>THE VOICE / SEASON 04</span><span>SARAWAK, MY ↗</span></div>
           <div class="voice-logo-shell">
             <img class="voice-logo" src="assets/the-voice-4-logo.png?v=1" alt="The Voice 4.0 — Step up, own the mic" />
           </div>
-          <p class="hero-copy">Three judges. Four criteria. One live scoreboard that stays in sync on every device.</p>
+          <div class="hero-art-footer"><span>Step up, own the mic.</span><span>ROUND 02</span></div>
+        </div>
+        <div class="hero-editorial">
+          <div class="hero-tags"><span>THE COMPETITION</span><span class="filled-tag">ROUND 2</span></div>
+          <h1>Great voices.<br />Every point<br /><em>counts.</em></h1>
+          <p class="hero-copy">Three perspectives. One shared stage.<br />Your official judging & scoring room.</p>
+          <a class="hero-link" href="#scoringDesk">Enter the scoring room <span>↗</span></a>
         </div>
         <div class="hero-stat" aria-label="Scoring summary">
-          <div><span>14</span><small>Artists</small></div>
-          <div><span>3</span><small>Judges</small></div>
-          <div><span>4</span><small>Criteria</small></div>
+          <div><span>14<sup>↗</sup></span><small>Artists on the stage</small></div>
+          <div><span>03</span><small>Judges on the panel</small></div>
+          <div><span>04</span><small>Criteria. Every detail matters.</small></div>
         </div>
       </section>
 
+      <div class="desk-label" id="scoringDesk"><span>THE SCORING ROOM</span><span>02 / COMPETITION</span></div>
+      <div id="connectionNotice" class="connection-notice" role="status">Connecting to the shared scoreboard…</div>
       <nav class="view-tabs" aria-label="App views">
         <button class="tab active" data-view="scoreboard" type="button">Scoreboard</button>
         <button class="tab" data-view="judge" type="button">Judge scoring</button>
@@ -125,6 +133,7 @@
         </div>
       </section>
     </main>
+    <footer class="site-footer"><span>THE VOICE 4.0</span><span>UNIT KEBUDAYAAN · UiTM CAWANGAN SARAWAK</span><a href="#">BACK TO TOP ↑</a></footer>
 
     <dialog id="manualDialog" class="app-dialog">
       <form method="dialog">
@@ -158,6 +167,6 @@
     </dialog>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script type="module" src="app.js?v=7"></script>
+    <script type="module" src="app.js?v=8"></script>
   </body>
 </html>

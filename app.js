@@ -28,7 +28,10 @@ const state = {
   settings: structuredClone(DEFAULT_SETTINGS),
   judgeId: localStorage.getItem("voice40-judge-v1") || "",
   selectedArtist: 0,
-  adapter: null
+  adapter: null,
+  ready: false,
+  connected: false,
+  loaded: false
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -53,17 +56,24 @@ class FirebaseAdapter {
     this.basePath = `events/${eventId}`;
     this.base = dbSdk.ref(this.db, this.basePath);
     await this.seed();
-    dbSdk.onValue(dbSdk.ref(this.db, `${this.basePath}/contestants`), (snapshot) => {
-      if (snapshot.exists()) state.contestants = Object.values(snapshot.val()).sort((a,b) => a.order - b.order);
-      onChange(); setSync("Live sync", "online");
-    }, () => setSync("Sync error", "offline"));
-    dbSdk.onValue(dbSdk.ref(this.db, `${this.basePath}/scores`), (snapshot) => {
-      state.scores = snapshot.val() || {};
-      onChange();
+    dbSdk.onValue(dbSdk.ref(this.db, '.info/connected'), (snapshot) => {
+      state.connected = snapshot.val() === true;
+      setSync(state.connected && state.loaded ? 'Live sync' : 'Connecting…', state.connected && state.loaded ? 'online' : 'offline');
+      renderScoreboard();
     });
-    dbSdk.onValue(dbSdk.ref(this.db, `${this.basePath}/config`), (snapshot) => {
-      if (snapshot.exists()) state.settings = { ...DEFAULT_SETTINGS, ...snapshot.val() };
+    dbSdk.onValue(this.base, (snapshot) => {
+      const data = snapshot.val() || {};
+      if (data.contestants) state.contestants = Object.values(data.contestants).sort((a,b) => a.order - b.order);
+      state.scores = data.scores || {};
+      state.settings = { ...DEFAULT_SETTINGS, ...data.config };
+      state.loaded = true;
+      setSync(state.connected ? 'Live sync' : 'Reconnecting…', state.connected ? 'online' : 'offline');
       onChange();
+    }, (error) => {
+      console.error(error);
+      state.loaded = false;
+      setSync('Connection unavailable', 'offline');
+      renderScoreboard();
     });
   }
   async seed() {
@@ -75,15 +85,20 @@ class FirebaseAdapter {
     if (Object.keys(updates).length) await this.rtdb.update(this.base, updates);
   }
   async saveScore(score) {
+    if (!state.ready) throw new Error('Live connection required');
     const target = this.rtdb.ref(this.db, `${this.basePath}/scores/${scoreKey(score.artistId, score.judgeId)}`);
     await this.rtdb.set(target, { ...score, updatedAt: this.rtdb.serverTimestamp() });
   }
   async savePrevious(updates) {
+    if (!state.ready) throw new Error('Live connection required');
     const values = {};
     for (const [id, previousScore] of Object.entries(updates)) values[`${this.basePath}/contestants/${id}/previousScore`] = previousScore;
     await this.rtdb.update(this.rtdb.ref(this.db), values);
   }
-  async saveSettings(settings) { await this.rtdb.update(this.rtdb.ref(this.db, `${this.basePath}/config`), settings); }
+  async saveSettings(settings) {
+    if (!state.ready) throw new Error('Live connection required');
+    await this.rtdb.update(this.rtdb.ref(this.db, `${this.basePath}/config`), settings);
+  }
 }
 
 function isFirebaseConfigured() {
@@ -94,6 +109,14 @@ function setSync(label, mode) {
   const target = $("#syncStatus");
   target.lastChild.textContent = ` ${label}`;
   target.className = `sync-pill ${mode || ""}`;
+  state.ready = state.connected && state.loaded && mode !== 'offline';
+  ['saveScore', 'saveManual', 'saveSettings', 'exportButton'].forEach((id) => { $(`#${id}`).disabled = !state.ready; });
+  const notice = $('#connectionNotice');
+  notice.classList.toggle('hidden', state.ready);
+  notice.classList.toggle('failed', mode === 'offline');
+  notice.textContent = mode === 'offline'
+    ? 'The shared scoreboard is unavailable. Scores cannot be loaded or saved. Check the connection and Firebase access, then reload this page.'
+    : 'Connecting to the shared scoreboard…';
 }
 
 function scoreFor(artistId, judgeId) {
@@ -114,6 +137,11 @@ function rankedContestants() {
 }
 
 function renderScoreboard() {
+  if (!state.ready) {
+    $('#leaderPodium').innerHTML = '';
+    $('#scoreboardRows').innerHTML = '<div class="empty-state"><strong>Waiting for the shared scoreboard.</strong>Rankings will appear when the live connection is available.</div>';
+    return;
+  }
   const ranking = rankedContestants();
   $("#leaderPodium").innerHTML = ranking.slice(0, 3).map((artist, index) => `
     <article class="leader-card">
@@ -203,10 +231,12 @@ function renderSettings() {
 
 function renderAll() {
   renderScoreboard();
-  if (state.judgeId) renderJudgePanel();
+  // A judge's in-progress input must survive another judge's live update.
+  if (state.judgeId && !document.activeElement?.matches('[data-score-input]')) renderJudgePanel();
 }
 
 async function saveCurrentScore() {
+  if (!state.ready) return showToast('Connect to the shared scoreboard before saving');
   const artist = state.contestants[state.selectedArtist];
   const values = $$('[data-score-input]').map((input) => input.value === "" ? "" : round(input.value));
   if (values.some((value) => value === "")) return showToast("Please score all four criteria");
@@ -259,6 +289,7 @@ function bindEvents() {
   $("#manualButton").addEventListener("click", () => { renderManualList(); $("#manualDialog").showModal(); });
   $("#saveManual").addEventListener("click", async (event) => {
     event.preventDefault();
+    if (!state.ready) return showToast('Connect to the shared scoreboard before saving');
     const updates = Object.fromEntries($$("[data-manual-id]").map((input) => [input.dataset.manualId, Math.max(0, round(input.value))]));
     try { await state.adapter.savePrevious(updates); $("#manualDialog").close(); showToast("Previous scores updated"); renderAll(); }
     catch (error) { console.error(error); showToast("Could not save previous scores"); }
@@ -266,6 +297,7 @@ function bindEvents() {
   $("#settingsButton").addEventListener("click", () => { renderSettings(); $("#settingsDialog").showModal(); });
   $("#saveSettings").addEventListener("click", async (event) => {
     event.preventDefault();
+    if (!state.ready) return showToast('Connect to the shared scoreboard before saving');
     const criteria = $$("[data-setting-criterion]").map((input, index) => input.value.trim() || `Criterion ${index + 1}`);
     const maxScore = Math.min(100, Math.max(1, Number($("#maxScoreInput").value) || 10));
     try { await state.adapter.saveSettings({ criteria, maxScore }); $("#settingsDialog").close(); showToast("Scoring setup updated"); renderAll(); }
@@ -275,7 +307,7 @@ function bindEvents() {
 }
 
 async function init() {
-  bindEvents(); renderAll();
+  bindEvents(); setSync('Connecting…', ''); renderAll();
   $("#judgeLock").classList.toggle("hidden", Boolean(state.judgeId));
   $("#scoringLayout").classList.toggle("hidden", !state.judgeId);
   if (!isFirebaseConfigured()) {
@@ -291,7 +323,7 @@ async function init() {
     showToast("Live sync unavailable — check Firebase access");
     renderAll();
   }
-  if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("./service-worker.js?v=7").catch(() => {});
+  if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("./service-worker.js?v=8").catch(() => {});
 }
 
 init();
