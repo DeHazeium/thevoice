@@ -81,6 +81,14 @@ select,input { background:#f8f8f3; color:#162e40; border-color:#b8c4ca; border-r
 .manual-row small { color:#587080; }
 .toast { background:#183b54; color:#fff; max-width:calc(100vw - 24px); }
 .toolbar { flex-wrap:wrap; }
+.toolbar { justify-content:flex-end; }
+.danger-button { border:1px solid #a93435; border-radius:999px; background:#fff1ed; color:#922829; padding:12px 18px; font:inherit; font-size:13px; font-weight:600; cursor:pointer; }
+.danger-button:hover { background:#f7d9d3; }
+.edit-selectors { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.edit-selectors select { width:100%; }
+.dialog-actions { flex-wrap:wrap; }
+#currentEditMessage,#resetMessage { min-height:20px; }
+@media(max-width:560px) { .edit-selectors { grid-template-columns:1fr; } .toolbar button { flex:1 1 140px; } }
 .obs-link-row { display:grid; gap:10px; padding:18px 0; border-bottom:1px solid #bdc9d1; }
 .obs-link-row input { width:100%; font-size:12px; }
 .obs-link-row > div { display:flex; gap:10px; flex-wrap:wrap; }

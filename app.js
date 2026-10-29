@@ -1,6 +1,7 @@
 import { firebaseConfig, eventId } from "./firebase-config.js";
 import { round, sumScores, formatScore } from "./score-math.js";
 import { rankContestants } from "./standings.js";
+import { makeScoreCorrection, matchesSavedScore, resetEventScores } from './score-admin.js';
 
 const CONTESTANTS = [
   { id: "yuri-j", name: "Yuricko", stageName: "Yuri J" },
@@ -33,7 +34,9 @@ const state = {
   adapter: null,
   ready: false,
   connected: false,
-  loaded: false
+  loaded: false,
+  adminBusy: false,
+  resetId: null
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -59,12 +62,20 @@ class FirebaseAdapter {
     });
     dbSdk.onValue(this.base, (snapshot) => {
       const data = snapshot.val() || {};
+      const wasReset = state.loaded && state.resetId !== (data.resetId || null);
+      state.resetId = data.resetId || null;
       if (data.contestants) state.contestants = Object.values(data.contestants).sort((a,b) => a.order - b.order);
       state.scores = data.scores || {};
       state.settings = { ...DEFAULT_SETTINGS, ...data.config };
       state.loaded = true;
       setSync(state.connected ? 'Live sync' : 'Reconnecting…', state.connected ? 'online' : 'offline');
       onChange();
+      if (wasReset) {
+        if (state.judgeId) renderJudgePanel();
+        $('#currentDialog').close();
+        $('#manualDialog').close();
+        showToast('All scores were reset. Score entries have been refreshed.');
+      }
     }, (error) => {
       console.error(error);
       state.loaded = false;
@@ -95,6 +106,21 @@ class FirebaseAdapter {
     if (!state.ready) throw new Error('Live connection required');
     await this.rtdb.update(this.rtdb.ref(this.db, `${this.basePath}/config`), settings);
   }
+  async correctScore(score, expected) {
+    if (!state.ready) throw new Error('Live connection required');
+    const target = this.rtdb.ref(this.db, `${this.basePath}/scores/${scoreKey(score.artistId, score.judgeId)}`);
+    const result = await this.rtdb.runTransaction(target, (current) => {
+      if (!matchesSavedScore(current, expected)) return;
+      return { ...score, updatedAt: this.rtdb.serverTimestamp() };
+    }, { applyLocally: false });
+    if (!result.committed) throw new Error('This score changed on another device. Reload the saved score before editing again.');
+  }
+  async resetAllScores() {
+    if (!state.ready) throw new Error('Live connection required');
+    const resetId = crypto.randomUUID();
+    const result = await this.rtdb.runTransaction(this.base, (event) => resetEventScores(event, resetId, this.rtdb.serverTimestamp()), { applyLocally: false });
+    if (!result.committed) throw new Error('Scores could not be reset. Reload the page and try again.');
+  }
 }
 
 function isFirebaseConfigured() {
@@ -115,6 +141,7 @@ function setSync(label, mode, detail) {
   target.className = `sync-pill ${mode || ""}`;
   state.ready = state.connected && state.loaded && mode !== 'offline';
   ['saveScore', 'saveManual', 'saveSettings', 'exportButton'].forEach((id) => { $(`#${id}`).disabled = !state.ready; });
+  updateAdminControls();
   const notice = $('#connectionNotice');
   notice.classList.toggle('hidden', state.ready);
   notice.classList.toggle('failed', mode === 'offline');
@@ -222,6 +249,41 @@ function renderSettings() {
   $("#maxScoreInput").value = state.settings.maxScore;
 }
 
+let editBaseline = null;
+function updateAdminControls() {
+  ['editCurrentButton', 'resetAllButton', 'saveCurrentEdit', 'reloadCurrentEdit'].forEach((id) => { $(`#${id}`).disabled = !state.ready || state.adminBusy; });
+  $('#confirmReset').disabled = !state.ready || state.adminBusy || $('#resetConfirmText').value !== 'RESET';
+  $$('#currentDialog input, #currentDialog select, #currentDialog .close-button, #currentCancel, #resetDialog input, #resetCancel, #resetDialog .close-button').forEach((control) => { control.disabled = state.adminBusy; });
+}
+
+function loadCurrentEdit() {
+  const artistId = $('#editArtist').value;
+  const judgeId = $('#editJudge').value;
+  editBaseline = structuredClone(state.scores[scoreKey(artistId, judgeId)] || null);
+  $('#currentEditFields').innerHTML = state.settings.criteria.map((criterion, index) => `<label class="field-row"><span>${escapeHtml(criterion)}</span><input data-edit-score="${index}" type="number" required min="0" max="${state.settings.maxScore}" step="0.01" inputmode="decimal" value="${editBaseline?.values?.[index] ?? ''}" placeholder="0.00" /></label>`).join('');
+  $('#currentEditMessage').textContent = editBaseline?.submitted ? 'Editing a saved judge score.' : 'No submitted score yet for this judge.';
+  $$('[data-edit-score]').forEach((input) => input.addEventListener('input', updateEditTotal));
+  updateEditTotal();
+}
+
+function updateEditTotal() {
+  $('#currentEditTotal').textContent = formatScore(sumScores($$('[data-edit-score]').map((input) => input.value)));
+}
+
+async function saveCurrentEdit(event) {
+  event.preventDefault();
+  if (!state.ready || state.adminBusy || !$('#currentForm').reportValidity()) return;
+  try {
+    const score = makeScoreCorrection($('#editArtist').value, $('#editJudge').value, $$('[data-edit-score]').map((input) => input.value), Number(state.settings.maxScore));
+    state.adminBusy = true; updateAdminControls();
+    await state.adapter.correctScore(score, editBaseline);
+    $('#currentDialog').close();
+    if (state.judgeId) renderJudgePanel();
+    showToast('Current score updated across all devices');
+  } catch (error) { $('#currentEditMessage').textContent = error.message; }
+  finally { state.adminBusy = false; updateAdminControls(); }
+}
+
 function renderAll() {
   renderScoreboard();
   // A judge's in-progress input must survive another judge's live update.
@@ -270,6 +332,37 @@ function escapeHtml(value) {
 }
 
 function bindEvents() {
+  $('#editCurrentButton').addEventListener('click', () => {
+    $('#editArtist').innerHTML = state.contestants.map((artist) => `<option value="${escapeHtml(artist.id)}">${escapeHtml(artist.stageName)}</option>`).join('');
+    $('#editArtist').value = state.contestants[state.selectedArtist]?.id || state.contestants[0].id;
+    $('#editJudge').value = state.judgeId || 'judge1';
+    loadCurrentEdit(); $('#currentDialog').showModal();
+  });
+  $('#editArtist').addEventListener('change', loadCurrentEdit);
+  $('#editJudge').addEventListener('change', loadCurrentEdit);
+  $('#reloadCurrentEdit').addEventListener('click', loadCurrentEdit);
+  $('#currentForm').addEventListener('submit', saveCurrentEdit);
+  $('#currentCancel').addEventListener('click', () => $('#currentDialog').close());
+  $('#currentClose').addEventListener('click', () => $('#currentDialog').close());
+  ['currentDialog', 'resetDialog'].forEach((id) => $(`#${id}`).addEventListener('cancel', (event) => { if (state.adminBusy) event.preventDefault(); }));
+  $('#resetAllButton').addEventListener('click', () => {
+    $('#resetConfirmText').value = ''; $('#resetMessage').textContent = '';
+    updateAdminControls(); $('#resetDialog').showModal();
+  });
+  $('#resetConfirmText').addEventListener('input', updateAdminControls);
+  $('#resetForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!state.ready || state.adminBusy || $('#resetConfirmText').value !== 'RESET') return;
+    state.adminBusy = true; updateAdminControls();
+    try {
+      await state.adapter.resetAllScores();
+      $('#resetDialog').close(); renderAll();
+      showToast('All current and previous scores reset to 0.00');
+    } catch (error) { $('#resetMessage').textContent = error.message; }
+    finally { state.adminBusy = false; updateAdminControls(); }
+  });
+  $('#resetCancel').addEventListener('click', () => $('#resetDialog').close());
+  $('#resetClose').addEventListener('click', () => $('#resetDialog').close());
   $('#obsButton').addEventListener('click', () => {
     $('#obsLinks').innerHTML = [1, 2, 3].map((rank) => {
       const url = new URL(`overlay.html?rank=${rank}`, location.href).href;
@@ -330,7 +423,7 @@ async function init() {
     showToast("Live sync unavailable — check Firebase access");
     renderAll();
   }
-  if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("./service-worker.js?v=10").catch(() => {});
+  if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("./service-worker.js?v=11").catch(() => {});
 }
 
 init();

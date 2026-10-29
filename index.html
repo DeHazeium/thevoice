@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css?v=6" />
-    <link rel="stylesheet" href="editorial.css?v=10" />
+    <link rel="stylesheet" href="editorial.css?v=11" />
     <link rel="manifest" href="manifest.webmanifest" />
   </head>
   <body>
@@ -66,8 +66,10 @@
           </div>
           <div class="toolbar">
             <button class="secondary-button" id="obsButton" type="button">OBS overlays</button>
+            <button class="secondary-button" id="editCurrentButton" type="button" disabled>Edit current scores</button>
             <button class="secondary-button" id="exportButton" type="button">Export CSV</button>
             <button class="primary-button compact" id="manualButton" type="button">Edit previous scores</button>
+            <button class="danger-button" id="resetAllButton" type="button" disabled>Reset all to zero</button>
           </div>
         </div>
 
@@ -179,7 +181,31 @@
         <div class="dialog-actions"><button class="secondary-button" value="cancel">Done</button></div>
       </form>
     </dialog>
+    <dialog id="currentDialog" class="app-dialog" aria-labelledby="currentTitle">
+      <form id="currentForm">
+        <div class="dialog-heading"><div><p class="eyebrow">SCORE CORRECTION</p><h2 id="currentTitle">Edit current scores</h2></div><button class="close-button" id="currentClose" type="button" aria-label="Close">×</button></div>
+        <p class="dialog-copy">Choose an artist and judge, then edit their four criterion scores. Their total, Round 2 average and overall ranking recalculate automatically. Previous-round scores are unchanged.</p>
+        <div class="edit-selectors">
+          <label class="field-row"><span>Artist</span><select id="editArtist"></select></label>
+          <label class="field-row"><span>Judge</span><select id="editJudge"><option value="judge1">Judge 1</option><option value="judge2">Judge 2</option><option value="judge3">Judge 3</option></select></label>
+        </div>
+        <p id="currentEditMessage" class="dialog-copy" role="status"></p>
+        <div id="currentEditFields" class="settings-fields"></div>
+        <div class="total-strip"><span>Judge total</span><strong id="currentEditTotal">0.00</strong></div>
+        <div class="dialog-actions"><button class="secondary-button" id="currentCancel" type="button">Cancel</button><button class="secondary-button" id="reloadCurrentEdit" type="button">Reload saved score</button><button class="primary-button" id="saveCurrentEdit" type="submit">Save correction</button></div>
+      </form>
+    </dialog>
+    <dialog id="resetDialog" class="app-dialog" aria-labelledby="resetTitle">
+      <form id="resetForm">
+        <div class="dialog-heading"><div><p class="eyebrow">RESET COMPETITION SCORES</p><h2 id="resetTitle">Reset all to zero?</h2></div><button class="close-button" id="resetClose" type="button" aria-label="Close">×</button></div>
+        <p class="dialog-copy">This sets <strong>all four criteria for all three judges, for every artist, and all previous-round scores to 0.00</strong>. Judge entries return to “Not scored”. The scoreboard and OBS overlays update on every device.</p>
+        <p class="dialog-copy">Ask judges to pause scoring first. Artist names and scoring criteria stay unchanged. A backup of the scores before this reset is kept in Firebase as the latest reset backup.</p>
+        <label class="field-row"><span>Type RESET to confirm</span><input id="resetConfirmText" autocomplete="off" spellcheck="false" required pattern="RESET" /></label>
+        <p id="resetMessage" class="dialog-copy" role="status"></p>
+        <div class="dialog-actions"><button class="secondary-button" id="resetCancel" type="button">Cancel</button><button class="danger-button" id="confirmReset" type="submit" disabled>Reset all scores to 0.00</button></div>
+      </form>
+    </dialog>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script type="module" src="app.js?v=10"></script>
+    <script type="module" src="app.js?v=11"></script>
   </body>
 </html>

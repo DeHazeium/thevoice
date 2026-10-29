@@ -12,6 +12,12 @@ A responsive, real-time scoring app for 14 contestants, three judges and four co
 - Firebase Realtime Database keeps every device in sync in real time.
 - The scoreboard can be exported as CSV.
 
+## Editing and resetting scores
+
+Use **Edit current scores** to select an artist and judge and correct their four criteria to two decimal places. Saving updates only that judge's entry. If another device changes it before you save, the correction is rejected until you reload the saved score.
+
+**Reset all to zero** requires typing `RESET`. It atomically zeros all current criteria and previous-round scores, marks every judge entry unsubmitted, and refreshes all devices and overlays. Pause judging before resetting. Names and settings are preserved. The latest pre-reset scores are retained at `events/the-voice-4/lastResetBackup` in Firebase (scores and previousScores); a later reset replaces this backup.
+
 ## OBS overlays
 
 Click **OBS overlays** on the scoreboard to copy or open separate Top 1, Top 2 and Top 3 green-screen URLs. Add each as an OBS Browser Source with a 1600 × 400 viewport and a Green Chroma Key filter. Toggle each source independently for your broadcast.
